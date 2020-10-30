@@ -40,6 +40,7 @@ def main():
     drop_tables(cur, conn)
     create_tables(cur, conn)
 
+    cur.close()
     conn.close()
 
 
