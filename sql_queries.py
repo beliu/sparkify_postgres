@@ -11,7 +11,7 @@ time_table_drop = "DROP TABLE IF EXISTS time;"
 songplay_table_create = ("""
     CREATE TABLE IF NOT EXISTS songplays (
         songplay_id INT PRIMARY KEY,
-        start_time TIME NOT NULL,
+        start_time TIMESTAMP NOT NULL,
         user_id VARCHAR NOT NULL,
         level VARCHAR NOT NULL,
         song_id VARCHAR NOT NULL,
@@ -56,7 +56,7 @@ song_table_create = ("""
     CREATE TABLE IF NOT EXISTS songs(
         song_id VARCHAR PRIMARY KEY,
         title VARCHAR NOT NULL,
-        artist_id INT NOT NULL,
+        artist_id VARCHAR NOT NULL,
         year INT NOT NULL,
         duration NUMERIC NOT NULL
     );
@@ -74,10 +74,11 @@ artist_table_create = ("""
 
 time_table_create = ("""
     CREATE TABLE IF NOT EXISTS time(
-        start_time TIME PRIMARY KEY,
+        start_time TIMESTAMP PRIMARY KEY,
         hour INT NOT NULL,
         day INT NOT NULL,
         week INT NOT NULL,
+        month INT NOT NULL,
         year INT NOT NULL,
         weekday INT NOT NULL
     );
@@ -86,19 +87,29 @@ time_table_create = ("""
 # INSERT RECORDS
 
 songplay_table_insert = ("""
+    INSERT INTO songplays
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
 """)
 
 user_table_insert = ("""
+    INSERT INTO users
+    VALUES (%s, %s, %s, %s, %s)
 """)
 
 song_table_insert = ("""
+    INSERT INTO songs
+    VALUES (%s, %s, %s, %s, %s)
 """)
 
 artist_table_insert = ("""
+    INSERT INTO artists
+    VALUES (%s, %s, %s, %s, %s)
 """)
 
 
 time_table_insert = ("""
+    INSERT INTO time
+    VALUES (%s, %s, %s, %s, %s, %s, %s)
 """)
 
 # FIND SONGS
