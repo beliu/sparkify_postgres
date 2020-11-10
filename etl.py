@@ -176,7 +176,8 @@ def create_csv():
     for table, filename in zip(tables, filenames):
         table.to_csv(filename, index=False, header=False, sep='\t')
 
-def copy_to_table(cur, conn):
+        
+def copy_csv_to_table(cur, conn):
 
     tablenames = ['songs',
                  'artists',
@@ -207,39 +208,39 @@ def copy_to_table(cur, conn):
     cur.close()
         
         
-# def write_to_csv(cur, conn):
-#     '''
-#         Write the data table dataframes to csv files.
-#     '''
+def copy_io_to_table(cur, conn):
+    '''
+        Write the data table dataframes to csv files.
+    '''
     
-#     from io import StringIO
+    from io import StringIO
 
-#     tables = [song_table,
-#               artist_table,
-#               user_table,
-#               time_table]
+    tables = [song_table,
+              artist_table,
+              user_table,
+              time_table]
     
-#     tablenames = ['songs',
-#                  'artists',
-#                  'users',
-#                  'time']
+    tablenames = ['songs',
+                 'artists',
+                 'users',
+                 'time']
     
-#     for table, tablename in zip(tables, tablenames):
-#         # save dataframe to an in memory buffer
-#         buffer = StringIO()
-#         table.to_csv(buffer, index=False, header=False, sep='\t')
-#         buffer.seek(0)
+    for table, tablename in zip(tables, tablenames):
+        # save dataframe to an in memory buffer
+        buffer = StringIO()
+        table.to_csv(buffer, index=False, header=False, sep='\t')
+        buffer.seek(0)
     
-#     try:
-#         cur.copy_from(buffer, tablename, sep="\t")
-#         conn.commit()
-#     except (Exception, psycopg2.DatabaseError) as error:
-#         print("Error: %s" % error)
-#         conn.rollback()
-#         cur.close()
-#         return 1
-#     print("copy_from_stringio() done")
-#     cur.close()
+    try:
+        cur.copy_from(buffer, tablename, sep="\t")
+        conn.commit()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print("Error: %s" % error)
+        conn.rollback()
+        cur.close()
+        return 1
+    print("copy_from_stringio() done")
+    cur.close()
     
     
 def main():
@@ -247,13 +248,9 @@ def main():
     cur = conn.cursor()
     
     process_data(cur, conn, filepath='data/song_data', func=process_song_file)
-#     process_data(cur, conn, filepath='data/log_data', func=process_log_file)
-#     create_csv()
-    copy_to_table(cur, conn)
-    
-#     print(artist_table.head())
-#     print(artist_table.head().info())
-    
+    process_data(cur, conn, filepath='data/log_data', func=process_log_file)
+    copy_io_to_table(cur, conn)
+        
     conn.close()
 
     
