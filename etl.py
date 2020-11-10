@@ -160,6 +160,9 @@ def process_data(cur, conn, filepath, func):
 
 
 def create_csv():
+    '''
+        Create CSV files from the dataframes
+    '''
     
     tables = [song_table,
               artist_table,
@@ -176,8 +179,12 @@ def create_csv():
     for table, filename in zip(tables, filenames):
         table.to_csv(filename, index=False, header=False, sep='\t')
 
-def copy_to_table(cur, conn):
-
+        
+def copy_csv_to_table(cur, conn):
+    '''
+        Copy data from the CSV files to the database
+    '''
+    
     tablenames = ['songs',
                  'artists',
                  'users',
@@ -202,57 +209,18 @@ def copy_to_table(cur, conn):
                 cur.close()
                 return 1
             
-            
     print("copy_to_table() done")    
     cur.close()
         
-        
-# def write_to_csv(cur, conn):
-#     '''
-#         Write the data table dataframes to csv files.
-#     '''
-    
-#     from io import StringIO
-
-#     tables = [song_table,
-#               artist_table,
-#               user_table,
-#               time_table]
-    
-#     tablenames = ['songs',
-#                  'artists',
-#                  'users',
-#                  'time']
-    
-#     for table, tablename in zip(tables, tablenames):
-#         # save dataframe to an in memory buffer
-#         buffer = StringIO()
-#         table.to_csv(buffer, index=False, header=False, sep='\t')
-#         buffer.seek(0)
-    
-#     try:
-#         cur.copy_from(buffer, tablename, sep="\t")
-#         conn.commit()
-#     except (Exception, psycopg2.DatabaseError) as error:
-#         print("Error: %s" % error)
-#         conn.rollback()
-#         cur.close()
-#         return 1
-#     print("copy_from_stringio() done")
-#     cur.close()
-    
-    
+            
 def main():
     conn = psycopg2.connect("host=127.0.0.1 dbname=sparkifydb user=student password=student")
     cur = conn.cursor()
     
     process_data(cur, conn, filepath='data/song_data', func=process_song_file)
-#     process_data(cur, conn, filepath='data/log_data', func=process_log_file)
-#     create_csv()
-    copy_to_table(cur, conn)
-    
-#     print(artist_table.head())
-#     print(artist_table.head().info())
+    process_data(cur, conn, filepath='data/log_data', func=process_log_file)
+    create_csv()
+    copy_csv_to_table(cur, conn)
     
     conn.close()
 
