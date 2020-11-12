@@ -12,7 +12,167 @@ song_table = pd.DataFrame()
 artist_table = pd.DataFrame()
 merged_table = pd.DataFrame()
 
+## Helper functions for data processing
+def clean_num_colns():
+    '''
+        Process and clean up attributes
+        of type numeric and int
+        so that they can meet the data validation rules
+        of the postgres database tables
+    '''
+    
+    # Some data columns may have mixed data types.
+    # Convert any data columns that should be of type int
+    # to type int
+    user_table['user_id'] = user_table['user_id'].astype(int)
+    songplay_table['user_id'] = songplay_table['user_id'].astype(int)
+    
+    # Replace Null values with the string "NaN"
+    # for data attributes of type INT or NUMERIC
+    # so that it can be accepted by the postgres database
+    num_colns = [song_table['year'],
+                 song_table['duration'],
+                 artist_table['latitude'],
+                 artist_table['longitude'],
+                 user_table['user_id'],
+                 songplay_table['user_id'],
+                 songplay_table['session_id']]
 
+    for coln in num_colns:
+        coln = coln.fillna(value='NaN', inplace=True)
+
+        
+def drop_duplicate_records():
+    '''
+        Drop duplicate records from the data tables.
+    '''
+    
+    tables = [song_table,
+              artist_table,
+              user_table,
+              time_table,
+              songplay_table]
+    
+    keys = ['song_id',
+            'artist_id',
+            'user_id',
+            'timestamp',
+            'songplay_id']
+    
+    for key, table in zip(keys, tables):
+        table.drop_duplicates(subset=[key], inplace=True, ignore_index=True)
+
+
+def get_files(filepath):
+    '''
+        Extract all the files under a given directory
+        and return as a list.
+    '''
+    
+    # get all files matching extension from directory
+    all_files = []
+    for root, dirs, files in os.walk(filepath):
+        files = glob.glob(os.path.join(root,'*.json'))
+        for f in files:
+            all_files.append(os.path.abspath(f))
+    
+    return all_files
+
+
+def create_csv():
+    '''
+        Create CSV files from the dataframes
+    '''
+    
+    tables = [song_table,
+              artist_table,
+              user_table,
+              time_table,
+              songplay_table]
+    
+    filenames = ['songs.csv',
+                 'artists.csv',
+                 'users.csv',
+                 'time.csv',
+                 'songplays.csv']
+    
+    for table, filename in zip(tables, filenames):
+        table.to_csv(filename, index=False, header=False, sep='\t')
+
+        
+def copy_csv_to_table(cur, conn):
+    '''
+        Copy data from the CSV files to the database
+    '''
+    
+    tablenames = ['songs',
+                 'artists',
+                 'users',
+                 'time',
+                 'songplays']
+    
+    filenames = ['songs.csv',
+                 'artists.csv',
+                 'users.csv',
+                 'time.csv',
+                 'songplays.csv']
+    
+    for tablename, filename in zip(tablenames, filenames):
+        with open(filename, 'r') as f:
+            try:
+                cur.copy_from(f, tablename, sep="\t")
+                conn.commit()
+                print(f'Data from {filename} copied to table')
+            except (Exception, psycopg2.DatabaseError) as error:
+                print("Error: %s" % error)
+                conn.rollback()
+                cur.close()
+                return 1
+            
+    print("copy_to_table() done")    
+    cur.close()
+        
+
+def copy_from_stringio(cur, conn):
+    """
+    Here we are going save the dataframe in memory 
+    and use copy_from() to copy it to the table
+    """
+    
+    from io import StringIO
+    
+    tables = [song_table,
+              artist_table,
+              user_table,
+              time_table,
+              songplay_table]
+    
+    tablenames = ['songs',
+                  'artists',
+                  'users',
+                  'time',
+                  'songplays']
+    
+    for table, tablename in zip(tables, tablenames):
+        # save dataframe to an in memory buffer
+        buffer = StringIO()
+        table.to_csv(buffer, index=False, header=False, sep='\t')
+        buffer.seek(0)
+
+        try:
+            cur.copy_from(buffer, tablename, sep="\t")
+            conn.commit()
+            print(f'Data from {tablename} copied to table')
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(f'Error: {error} for the {tablename} table')
+            conn.rollback()
+            cur.close()
+            return 1
+        
+    print("copy_from_stringio() done")
+    cur.close()
+    
+    
 def process_song_file(cur, conn, filepath):
     '''
         Extract the data from song and artist files,
@@ -32,6 +192,7 @@ def process_song_file(cur, conn, filepath):
         artist_df = df[['artist_id', 'artist_name', 'artist_location', 
                         'artist_latitude', 'artist_longitude']].copy()
         artist_df.columns = ['artist_id', 'name', 'location', 'latitude', 'longitude']
+        
         global artist_table
         artist_table = pd.concat([artist_table, artist_df], ignore_index=True)
     
@@ -98,44 +259,7 @@ def process_log_file(cur, conn, filepath):
     # Add the new data to the data table
     global songplay_table
     songplay_table = pd.concat([songplay_table, songplay_records_df], ignore_index=True)
-
     
-def get_files(filepath):
-    '''
-        Extract all the files under a given directory
-        and return as a list.
-    '''
-    
-    # get all files matching extension from directory
-    all_files = []
-    for root, dirs, files in os.walk(filepath):
-        files = glob.glob(os.path.join(root,'*.json'))
-        for f in files:
-            all_files.append(os.path.abspath(f))
-    
-    return all_files
-
-
-def drop_duplicate_records():
-    '''
-        Drop duplicate records from the data tables.
-    '''
-    
-    tables = [song_table,
-              artist_table,
-              user_table,
-              time_table,
-              songplay_table]
-    
-    keys = ['song_id',
-            'artist_id',
-            'user_id',
-            'timestamp',
-            'songplay_id']
-    
-    for key, table in zip(keys, tables):
-        table.drop_duplicates(subset=[key], inplace=True)
-        
 
 def process_data(cur, conn, filepath, func):
     # get all files matching extension from directory
@@ -156,72 +280,27 @@ def process_data(cur, conn, filepath, func):
         conn.commit()
         print('{}/{} files processed.'.format(i, num_files))
     
-    drop_duplicate_records()
-
-
-def create_csv():
-    '''
-        Create CSV files from the dataframes
-    '''
     
-    tables = [song_table,
-              artist_table,
-              user_table,
-              time_table,
-              songplay_table]
-    
-    filenames = ['songs.csv',
-                 'artists.csv',
-                 'users.csv',
-                 'time.csv',
-                 'songplays.csv']
-    
-    for table, filename in zip(tables, filenames):
-        table.to_csv(filename, index=False, header=False, sep='\t')
-
-        
-def copy_csv_to_table(cur, conn):
-    '''
-        Copy data from the CSV files to the database
-    '''
-    
-    tablenames = ['songs',
-                 'artists',
-                 'users',
-                 'time',
-                 'songplays']
-    
-    filenames = ['songs.csv',
-                 'artists.csv',
-                 'users.csv',
-                 'time.csv',
-                 'songplays.csv']
-    
-    for tablename, filename in zip(tablenames, filenames):
-        with open(filename, 'r') as f:
-            try:
-                cur.copy_from(f, tablename, sep="\t")
-                conn.commit()
-                print(f'Data from {filename} copied to table')
-            except (Exception, psycopg2.DatabaseError) as error:
-                print("Error: %s" % error)
-                conn.rollback()
-                cur.close()
-                return 1
-            
-    print("copy_to_table() done")    
-    cur.close()
-        
-            
 def main():
     conn = psycopg2.connect("host=127.0.0.1 dbname=sparkifydb user=student password=student")
     cur = conn.cursor()
     
     process_data(cur, conn, filepath='data/song_data', func=process_song_file)
-    process_data(cur, conn, filepath='data/log_data', func=process_log_file)
-    create_csv()
-    copy_csv_to_table(cur, conn)
+    # Drop any duplicate records in the dataframe that will violate table key uniqueness
+    drop_duplicate_records()
     
+    process_data(cur, conn, filepath='data/log_data', func=process_log_file)
+    # Convert columns that contain mixed data types to only type int
+    # to maintain data type consistency. Replace Null values with
+    # string "NaN" in numeric columns to avoid COPY to table errors
+    clean_num_colns()
+    
+    # Drop any duplicate records in the dataframe that will violate table key uniqueness
+    drop_duplicate_records()
+    
+    # Write data to database
+    copy_from_stringio(cur, conn)
+    conn.commit()    
     conn.close()
 
     
