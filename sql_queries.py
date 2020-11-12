@@ -57,8 +57,8 @@ song_table_create = ("""
         song_id VARCHAR PRIMARY KEY,
         title VARCHAR NOT NULL,
         artist_id VARCHAR NOT NULL,
-        year INT NOT NULL,
-        duration NUMERIC NOT NULL
+        year INT,
+        duration NUMERIC
     );
 """)
 
@@ -67,8 +67,8 @@ artist_table_create = ("""
         artist_id VARCHAR PRIMARY KEY,
         name VARCHAR NOT NULL,
         location VARCHAR,
-        latitude numeric,
-        longitude numeric
+        latitude NUMERIC,
+        longitude NUMERIC
     );
 """)
 
@@ -88,28 +88,28 @@ time_table_create = ("""
 
 songplay_table_insert = ("""
     INSERT INTO songplays
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
 """)
 
 user_table_insert = ("""
     INSERT INTO users
-    VALUES (%s, %s, %s, %s, %s)
+    VALUES (%s, %s, %s, %s, %s);
 """)
 
 song_table_insert = ("""
     INSERT INTO songs
-    VALUES (%s, %s, %s, %s, %s)
+    VALUES (%s, %s, %s, %s, %s);
 """)
 
 artist_table_insert = ("""
     INSERT INTO artists
-    VALUES (%s, %s, %s, %s, %s)
+    VALUES (%s, %s, %s, %s, %s);
 """)
 
 
 time_table_insert = ("""
     INSERT INTO time
-    VALUES (%s, %s, %s, %s, %s, %s, %s)
+    VALUES (%s, %s, %s, %s, %s, %s, %s);
 """)
 
 # FIND SONGS

@@ -12,6 +12,7 @@ song_table = pd.DataFrame()
 artist_table = pd.DataFrame()
 merged_table = pd.DataFrame()
 
+
 ## Helper functions for data processing
 def clean_num_colns():
     '''
@@ -78,60 +79,6 @@ def get_files(filepath):
     
     return all_files
 
-
-def create_csv():
-    '''
-        Create CSV files from the dataframes
-    '''
-    
-    tables = [song_table,
-              artist_table,
-              user_table,
-              time_table,
-              songplay_table]
-    
-    filenames = ['songs.csv',
-                 'artists.csv',
-                 'users.csv',
-                 'time.csv',
-                 'songplays.csv']
-    
-    for table, filename in zip(tables, filenames):
-        table.to_csv(filename, index=False, header=False, sep='\t')
-
-        
-def copy_csv_to_table(cur, conn):
-    '''
-        Copy data from the CSV files to the database
-    '''
-    
-    tablenames = ['songs',
-                 'artists',
-                 'users',
-                 'time',
-                 'songplays']
-    
-    filenames = ['songs.csv',
-                 'artists.csv',
-                 'users.csv',
-                 'time.csv',
-                 'songplays.csv']
-    
-    for tablename, filename in zip(tablenames, filenames):
-        with open(filename, 'r') as f:
-            try:
-                cur.copy_from(f, tablename, sep="\t")
-                conn.commit()
-                print(f'Data from {filename} copied to table')
-            except (Exception, psycopg2.DatabaseError) as error:
-                print("Error: %s" % error)
-                conn.rollback()
-                cur.close()
-                return 1
-            
-    print("copy_to_table() done")    
-    cur.close()
-        
 
 def copy_from_stringio(cur, conn):
     """
@@ -297,6 +244,14 @@ def main():
     
     # Drop any duplicate records in the dataframe that will violate table key uniqueness
     drop_duplicate_records()
+    
+    # Since many rows in songplays table have empty results for song and artist id,
+    # Add a NULL row for song and artist tables so that we can maintain
+    # relational integrity between songplays table and these two tables.
+    row =  ['', '', '', None, None]
+    cur.execute(song_table_insert, row)
+    cur.execute(artist_table_insert, row)
+    conn.commit()
     
     # Write data to database
     copy_from_stringio(cur, conn)
