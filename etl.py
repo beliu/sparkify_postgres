@@ -79,7 +79,7 @@ def get_files(filepath):
     
     return all_files
 
-
+        
 def copy_expert_from_io(cur, conn):
     """
         Here we are going save the dataframe in memory 
@@ -107,7 +107,19 @@ def copy_expert_from_io(cur, conn):
         buffer.seek(0)
 
         try:
-            sql = f"COPY {table} FROM STDIN"
+            # Create a temporary table to allow for
+            # ON CONFLICT resolution when copying
+            # data into the data table in bulk
+            sql = f"""
+                CREATE TEMPORARY TABLE temp_table
+                (LIKE {tablename})
+                ON COMMIT DROP;
+                COPY temp_table FROM STDIN (FORMAT CSV, DELIMITER E'\t');
+                INSERT INTO {tablename}
+                SELECT *
+                FROM temp_table
+                ON CONFLICT DO NOTHING;
+            """
             cur.copy_expert(sql, buffer)
             conn.commit()
             print(f'Data from {tablename} copied to table')
@@ -118,46 +130,6 @@ def copy_expert_from_io(cur, conn):
             return 1
         
     print("copy_expert_from_io() done")
-    cur.close()
-    
-    
-def copy_from_stringio(cur, conn):
-    """
-    Here we are going save the dataframe in memory 
-    and use copy_from() to copy it to the table
-    """
-    
-    from io import StringIO
-    
-    tables = [song_table,
-              artist_table,
-              user_table,
-              time_table,
-              songplay_table]
-    
-    tablenames = ['songs',
-                  'artists',
-                  'users',
-                  'time',
-                  'songplays']
-    
-    for table, tablename in zip(tables, tablenames):
-        # save dataframe to an in memory buffer
-        buffer = StringIO()
-        table.to_csv(buffer, index=False, header=False, sep='\t')
-        buffer.seek(0)
-
-        try:
-            cur.copy_from(buffer, tablename, sep="\t")
-            conn.commit()
-            print(f'Data from {tablename} copied to table')
-        except (Exception, psycopg2.DatabaseError) as error:
-            print(f'Error: {error} for the {tablename} table')
-            conn.rollback()
-            cur.close()
-            return 1
-        
-    print("copy_from_stringio() done")
     cur.close()
     
     
@@ -274,18 +246,13 @@ def main():
     cur = conn.cursor()
     
     process_data(cur, conn, filepath='data/song_data', func=process_song_file)
-    # Drop any duplicate records in the dataframe that will violate table key uniqueness
-    drop_duplicate_records()
+    process_data(cur, conn, filepath='data/log_data', func=process_log_file)
     
-#     process_data(cur, conn, filepath='data/log_data', func=process_log_file)
     # Convert columns that contain mixed data types to only type int
     # to maintain data type consistency. Replace Null values with
     # string "NaN" in numeric columns to avoid COPY to table errors
-#     clean_num_colns()
-    
-    # Drop any duplicate records in the dataframe that will violate table key uniqueness
-#     drop_duplicate_records()
-    
+    clean_num_colns()
+       
     # Since many rows in songplays table have empty results for song and artist id,
     # Add a NULL row for song and artist tables so that we can maintain
     # relational integrity between songplays table and these two tables.
@@ -295,7 +262,6 @@ def main():
     conn.commit()
     
     # Write data to database
-#     copy_from_stringio(cur, conn)
     copy_expert_from_io(cur, conn)
     conn.commit()    
     conn.close()
