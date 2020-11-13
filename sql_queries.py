@@ -88,28 +88,39 @@ time_table_create = ("""
 
 songplay_table_insert = ("""
     INSERT INTO songplays
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (songplay_id) 
+    DO NOTHING;
+;
 """)
 
 user_table_insert = ("""
     INSERT INTO users
-    VALUES (%s, %s, %s, %s, %s);
+    VALUES (%s, %s, %s, %s, %s)
+    ON CONFLICT (user_id)
+    DO NOTHING;
 """)
 
 song_table_insert = ("""
     INSERT INTO songs
-    VALUES (%s, %s, %s, %s, %s);
+    VALUES (%s, %s, %s, %s, %s)
+    ON CONFLICT (song_id)
+    DO NOTHING;
 """)
 
 artist_table_insert = ("""
     INSERT INTO artists
-    VALUES (%s, %s, %s, %s, %s);
+    VALUES (%s, %s, %s, %s, %s)
+    ON CONFLICT (artist_id)
+    DO NOTHING;
 """)
 
 
 time_table_insert = ("""
     INSERT INTO time
-    VALUES (%s, %s, %s, %s, %s, %s, %s);
+    VALUES (%s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (timestamp)
+    DO NOTHING;
 """)
 
 # FIND SONGS
