@@ -1,8 +1,60 @@
 # The Sparkify ETL Pipeline
 
+## Project Overview
 Sparkify is an up-and-coming music streaming platform that is (pardon the pun) hitting all the right notes in the tech and music industry. We are building an ETL pipeline for them that will extract song, artist, and log data from JSON files and load the data into their postgresql database. Once this process is complete, Sparkify data analysts will be able to explore the data and gain insights about how the platform's users interact with the app, and which songs and artists they listen to.
 
 <br>
+
+## Project Files
+The main files/folders of interest in this repository are:
+- data/
+- sql_queries.py
+- create_tables.py
+- etl.py
+- etl.ipynb
+- test.ipynb
+
+**data/** - This directory contains the JSON files with the data for our database. There are two other directories within this one: 
+`log_data/2018/11` contains the JSON files for user songplay log data.
+`song_data/` contains JSON files for song and artist data.
+
+**sql_queries.py** - This script contains SQL commands used to DROP, CREATE, and INSERT values into the data tables.
+
+**create_tables.py** - Using the python library `psycopg2`, this script connects to the database and executes the commands from `sql_queries.py` to create and insert values into the data tables.
+
+**etl.py** - This script does the extraction, transforming, and loading of the user-log and song/artist data into the database. I describe the details of the script in the ETL section below.
+
+**etl.ipynb** - This is a Jupyter Notebook that I used to test my etl functions before adding them to `etl.py`.
+
+**test.ipynb** - This notebook contains SQL commands you can execute within the notebook to test if the `etl.py` successfully loaded the data into the database.
+
+<br>
+
+## How to Run the Scripts
+If you would like to run the scripts locally, first download and install postgresql to your machine:
+
+[Install Postgresql](https://www.postgresql.org/download/)
+
+You can create the database `studentdb` and the user `student` by operning the command line terminal on your machine and following these steps:
+
+Get into Admin mode:
+`$ sudo -u postgres psql`
+You will have to enter your password for your machine.
+If successful, you should now be in the psql command line. You can tell if you are in psql if you see this in your terminal:
+`postgres=#`
+
+Create the database:
+`postgres=# create database studentdb;`
+
+Create the user:
+`postgres=# create user student with password 'student';`
+
+Give the user privileges:
+`postgres=# grant all privileges on database studentdb to student;`
+`postgres=# alter user student createdb;'
+
+
+
 
 ## The Sparkify Data Schema
 The Sparkify data schema consists of 5 tables arranged in a Star Schema. The figure below is a representation of the schema:
@@ -14,6 +66,9 @@ The fact table is the `songplays` table. It references four dimension tables:
 - `artists`
 - `users`
 - `time`
+
+The schema is in 3rd Normal Form. Each row contains attributes that contain only one value (no lists or tuples for any attribute). 
+Each row is also uniquely identified by the primary key attribute. Each table contains attributes that describe the table itself. Attributes related to other tables are linked via foreign keys.
 
 <br>
 
