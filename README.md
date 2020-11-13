@@ -38,23 +38,48 @@ If you would like to run the scripts locally, first download and install postgre
 You can create the database `studentdb` and the user `student` by operning the command line terminal on your machine and following these steps:
 
 Get into Admin mode:
+
 `$ sudo -u postgres psql`
+
 You will have to enter your password for your machine.
+
 If successful, you should now be in the psql command line. You can tell if you are in psql if you see this in your terminal:
+
 `postgres=#`
 
 Create the database:
+
 `postgres=# create database studentdb;`
 
 Create the user:
+
 `postgres=# create user student with password 'student';`
 
 Give the user privileges:
+
 `postgres=# grant all privileges on database studentdb to student;`
-`postgres=# alter user student createdb;'
 
+`postgres=# alter user student createdb;`
 
+Before we run the python scripts, open the Jupyter Notebooks and make sure no previous connection to the database has been made. To be sure, you can restart the Kernel for each notebook. Now in your terminal, navigate to the diretory with you python files. Create the database and tables first:
 
+`python create_tables.py`
+
+or
+
+`python3 create_tables.py`
+
+If there are no errors, then run:
+
+`python etl.py`
+
+or
+
+`python3 etl.py`
+
+To check if the data was loaded, open `test.ipynb` and run all the cells to check the data tables.
+
+<br> 
 
 ## The Sparkify Data Schema
 The Sparkify data schema consists of 5 tables arranged in a Star Schema. The figure below is a representation of the schema:
