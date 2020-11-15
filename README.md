@@ -118,7 +118,7 @@ Rather than INSERTing each new record into the postgresql database one at a time
 ### Transform
 The data we extract from the JSON files needs to be cleaned up before we can load them into the database. There were two main issues with the data:
 
-1. There are duplicate records. Our data tables use primary keys to insure the uniqueness of their records. Duplicate records would be rejected if we tried to upload them. We can resolve these issues using the `ON CONFLICT` feature of postgresql. Specifically, we specify `ON CONFLICT DO NOTHING`. In this case, if a conflict arises due to duplicate records, we would not insert the record into the data table and move to the next.
+1. There are duplicate records. Our data tables use primary keys to insure the uniqueness of their records. Duplicate records would be rejected if we tried to upload them. We can resolve these issues using the `ON CONFLICT` feature of postgresql. Specifically, we specify `ON CONFLICT DO NOTHING`. In this case, if a conflict arises due to duplicate records, we would not insert the record into the/7 data table and move to the next. However, for the `users` table, we use `ON CONFLICT DO UPDATE` because a user could update their information. For example, a user could upgrade from a Free level to a Paid level.
 
 2. Mixed data types. There are certain data attributes that are of type `int` or `numeric`. When we read JSON data into the Pandas Dataframe, they may contain a mix of data types. The most common example is records of type string, int, and float getting mixed together in one column. To maintain data consistency, we should enforce that int/numeric columns only contain int/numeric values. Again, Pandas has built-in functions that allow us to do this.
 
@@ -127,7 +127,7 @@ The data we extract from the JSON files needs to be cleaned up before we can loa
 ### Load
 At this stage, all records have been extracted from JSON files and stored in Pandas Dataframes. Duplicate records are removed, data types are consistent, and foreign key constraints are met. We now convert the Dataframes into a CSV file, in memory, using the `StringIO` python library. There are some nuances here. First, CSV data are normally comma-separated. However, the records for songplays contain strings with commas in them. This will be interpreted as separate columns. To work around this issue, when we write the Dataframe to CSV, we specify that the separator be tab. Then when we copy the data from CSV into tables, we also specifcy that the separator be tab. This resolved the issue.
 
-Second, as mentioned in the previous section, we have to deal with duplicate records in the raw data. We make use of postgresql's `ON CONFLICT` feature. We specify `ON CONFLICT DO NOTHING` so that if a conflict arises from duplicate records, we move on to the next record. We do not UPDATE the records in this case because we are not sure which version of the record is the actual one. Although the subsequent records may be more accurate, I decided to simplify the loading process and give preference to the first record that was inserted and to ignore subsquent duplicate ones.
+Second, as mentioned in the previous section, we have to deal with duplicate records in the raw data. We make use of postgresql's `ON CONFLICT` feature. For all tables *except* users, we specify `ON CONFLICT DO NOTHING` so that if a conflict arises from duplicate records, we move on to the next record. We do not UPDATE the records in this case because we are not sure which version of the record is the actual one. Although the subsequent records may be more accurate, I decided to simplify the loading process and give preference to the first record that was inserted and to ignore subsquent duplicate ones.
 
 I wrote a function `copy_expert_from_io()` that contains the steps we just discussed. First, we have to write the data from each dataframe into memory:
 
@@ -158,6 +158,20 @@ ON CONFLICT DO NOTHING;
 ```
 
 I pass this command and the CSV from memory into `psycopg2`'s `copy_expert()` function to execute it in the database.
+
+For the `users` table, we have to use a different approach because a user could udpate their information. We use this instead:
+```
+    INSERT INTO users
+    VALUES (%s, %s, %s, %s, %s)
+    ON CONFLICT (user_id)
+    DO UPDATE
+        SET first_name = EXCLUDED.first_name,
+            last_name = EXCLUDED.last_name,
+            gender = EXCLUDED.gender,
+            level = EXCLUDED.level;
+```
+
+Here, we are telling the database to update the records when it comes across a duplicate row on `user_id`. However, there is no way to do a bulk upload while allowing for updates. Therefore, we must process each record one at a time.
 
 ## Check the Results
 After we run `etl.py` with no errors, we use the `test.ipynb` notebook to look at our database. There are a series of commands that allow us to pass SQL commands directly to the database. We focus on checking the head of the data tables, and the counts, to make sure we have the expected columns, data, and number of records.

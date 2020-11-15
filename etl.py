@@ -79,27 +79,38 @@ def get_files(filepath):
     
     return all_files
 
-        
-def copy_expert_from_io(cur, conn):
+
+def update_users_table(cur, conn):
+    '''
+        Update the users table by inserting
+        data one row at a time, with
+        conflict update resolution.
+    '''
+    
+    print('Starting upload of user data')
+    for i, row in user_table.iterrows():
+        try:
+            cur.execute(user_table_insert, row)
+            conn.commit()
+            if ((i + 1) % 1000) == 0:
+                print(f'{i + 1} User table rows processed')
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(f'Error: {error} when updating the user table')
+            conn.rollback()
+            cur.close()
+            return 1
+    
+    print('updated_users_table() completed')
+    
+    
+def copy_expert_from_io(cur, conn, tables, tablenames):
     """
         Here we are going save the dataframe in memory 
         and use copy_from() to copy it to the table
     """
     
     from io import StringIO
-    
-    tables = [song_table,
-              artist_table,
-              user_table,
-              time_table,
-              songplay_table]
-    
-    tablenames = ['songs',
-                  'artists',
-                  'users',
-                  'time',
-                  'songplays']
-    
+      
     for table, tablename in zip(tables, tablenames):
         # save dataframe to an in memory buffer
         buffer = StringIO()
@@ -242,6 +253,7 @@ def process_data(cur, conn, filepath, func):
     
     
 def main():
+    
     conn = psycopg2.connect("host=127.0.0.1 dbname=sparkifydb user=student password=student")
     cur = conn.cursor()
     
@@ -262,7 +274,26 @@ def main():
     conn.commit()
     
     # Write data to database
-    copy_expert_from_io(cur, conn)
+    # Write the users table first, which
+    # requires upsert transaction and must be done row by row
+    update_users_table(cur, conn)
+    
+    # Copy data in bulk for the other tables
+    table = [
+             song_table,
+             artist_table,
+             time_table,
+             songplay_table
+    ]
+    
+    tablenames = [
+                  'songs',
+                  'artists',
+                  'time',
+                  'songplays'
+    ]
+    
+    copy_expert_from_io(cur, conn, table, tablenames)
     conn.commit()    
     conn.close()
 

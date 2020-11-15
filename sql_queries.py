@@ -98,7 +98,11 @@ user_table_insert = ("""
     INSERT INTO users
     VALUES (%s, %s, %s, %s, %s)
     ON CONFLICT (user_id)
-    DO NOTHING;
+    DO UPDATE
+        SET first_name = EXCLUDED.first_name,
+            last_name = EXCLUDED.last_name,
+            gender = EXCLUDED.gender,
+            level = EXCLUDED.level;
 """)
 
 song_table_insert = ("""
